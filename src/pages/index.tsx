@@ -1,11 +1,53 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from '~/styles/Home.module.css'
+import Head from 'next/head';
+import { Inter } from 'next/font/google';
+import styles from '~/styles/Home.module.css';
+import { useForm } from 'react-hook-form';
+import { FakeUmd } from '~/fakeUmd';
+import { useCallback, useEffect, useState } from 'react';
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'] });
 
 export default function Home() {
+  const umd = FakeUmd;
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
+    mode: 'onChange',
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      salutation: '',
+      rules: {},
+    },
+  });
+
+  const watchedRules = watch('rules');
+
+  // save the rules into the form value
+  // we created an extra field for this
+  // not for submitting of course
+  // it could be anything, and doesn't
+  // have to be the full rule, we just
+  // need to have a state that changes
+  const updateRules = useCallback(() => {
+    const rules = umd.getRule();
+    setValue('rules', rules);
+    // setRules(rules);
+  }, [umd]);
+
+  // when a rule changes,
+  // trigger the validation
+  useEffect(() => {
+    if (watchedRules) {
+      trigger();
+    }
+  }, [watchedRules, trigger]);
+
   return (
     <>
       <Head>
@@ -15,100 +57,74 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={`${styles.main} ${inter.className}`}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>src/pages/index.tsx</code>
-          </p>
+        <form onSubmit={handleSubmit(console.log)}>
           <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
+            <select
+              {...register('salutation', {
+                async onChange(event) {
+                  await umd.updateSalutation(event.target.value);
+
+                  updateRules();
+
+                  return event;
+                },
+              })}
             >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
+              <option value="">Select...</option>
+              <option value="mr">MR</option>
+              <option value="miss">MISS</option>
+            </select>
           </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-        </div>
-
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p>
-              Find in-depth information about Next.js features and&nbsp;API.
+          <div>
+            <input
+              {...register('firstName', {
+                // @ts-ignore
+                validate: umd.getRule().firstName,
+                onChange(event) {
+                  umd.setFirstName(event.target.value);
+                  trigger('lastName');
+                  return event;
+                },
+              })}
+              placeholder="First name"
+            />
+          </div>
+          {errors.firstName && (
+            <p
+              style={{
+                color: 'red',
+              }}
+            >
+              {errors.firstName.message}
             </p>
-          </a>
+          )}
 
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
+          <div>
+            <input
+              {...register('lastName', {
+                // @ts-ignore
+                validate: umd.getRule().lastName,
+                onChange(event) {
+                  umd.setLastName(event.target.value);
+                  trigger('firstName');
+                  return event;
+                },
+              })}
+              placeholder="Last name"
+            />
+          </div>
+          {errors.lastName && (
+            <p
+              style={{
+                color: 'red',
+              }}
+            >
+              {errors.lastName.message}
             </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
-        </div>
+          )}
+          <input type="submit" />
+        </form>
       </main>
     </>
-  )
+  );
 }
